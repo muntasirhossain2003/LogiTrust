@@ -1,0 +1,69 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px clamp(20px, 5vw, 48px);
+  background: rgba(244, 245, 247, 0.72);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid rgba(30, 42, 69, 0.08);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1e2a45;
+}
+
+.brandMark {
+  width: 18px;
+  height: 20px;
+  background: linear-gradient(160deg, #4d8dff, #2f6df6 60%, #1e4fd6);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 28px);
+}
+
+.navLink {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #4a5570;
+  transition: color 150ms ease;
+}
+
+.navLink:hover {
+  color: #1e2a45;
+}
+
+.cta {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #2f6df6;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: background 150ms ease;
+}
+
+.cta:hover {
+  background: #1e4fd6;
+}
+
+@media (max-width: 480px) {
+  .navLink {
+    display: none;
+  }
+}
