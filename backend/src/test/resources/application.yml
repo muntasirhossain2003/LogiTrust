@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:logitrust-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      # Tests build the schema from the entities directly; Flyway (Postgres
+      # SQL) stays out of the H2 test context.
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: test-secret-key-that-is-long-enough-for-hmac-sha-256-signing
+    access-token-ttl-seconds: 900
+    otp-pending-ttl-seconds: 300
+    refresh-token-ttl-seconds: 604800
