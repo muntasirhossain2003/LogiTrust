@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: logitrust
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/logitrust}
+    username: ${DB_USERNAME:logitrust}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate only validates entities against it
+      # so a mismatch fails fast at startup instead of silently drifting.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    access-token-ttl-seconds: 900
+    otp-pending-ttl-seconds: 300
+    refresh-token-ttl-seconds: 604800
+  mail:
+    # "log" prints OTPs to the app log (no credentials needed);
+    # "smtp" sends real email via the spring.mail settings above.
+    mode: ${MAIL_MODE:log}
+    from: ${MAIL_FROM:${MAIL_USERNAME:no-reply@logitrust.dev}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    mail:
+      # In log mode there are no SMTP credentials, so the mail ping would
+      # falsely mark the whole app DOWN.
+      enabled: false
+
+logging:
+  level:
+    com.logitrust: INFO
