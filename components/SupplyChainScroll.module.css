@@ -1,0 +1,197 @@
+.wrapper {
+  position: relative;
+  height: 400vh;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f4f5f7;
+}
+
+.stage {
+  position: relative;
+  width: min(100%, 178vh);
+  margin: 0 auto;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #f4f5f7;
+  z-index: 3;
+}
+
+.loaderLabel {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1e2a45;
+}
+
+.loaderTrack {
+  width: min(260px, 60%);
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(30, 42, 69, 0.15);
+  overflow: hidden;
+}
+
+.loaderBar {
+  height: 100%;
+  border-radius: 999px;
+  background: #2f6df6;
+  transition: width 150ms ease-out;
+}
+
+.overlay {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  color: #1e2a45;
+}
+
+.overlayIntro {
+  top: 8%;
+  left: 5%;
+  max-width: 24rem;
+}
+
+.overlayFraud {
+  top: 14%;
+  right: 6%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+}
+
+.overlayResolve {
+  top: 10%;
+  left: 5%;
+  max-width: 20rem;
+}
+
+.overlayDelivered {
+  bottom: 12%;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.heading {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.subtext {
+  margin-top: 10px;
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  line-height: 1.45;
+  color: #4a5570;
+}
+
+.label {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(30, 42, 69, 0.92);
+  color: #ffffff;
+  font-size: clamp(0.8rem, 1.5vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.overlayFraud .label {
+  background: rgba(196, 52, 45, 0.94);
+}
+
+.riskScore {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: clamp(0.8rem, 1.4vw, 0.95rem);
+  font-weight: 600;
+  color: #c4342d;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.labelLarge {
+  font-size: clamp(1.4rem, 3.4vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0e7a5f;
+}
+
+.scrollHint {
+  position: absolute;
+  bottom: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7a849c;
+  z-index: 2;
+}
+
+.scrollHintArrow {
+  animation: hint-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes hint-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@media (max-width: 640px) {
+  .overlayIntro {
+    top: 6%;
+    left: 6%;
+    right: 6%;
+    max-width: none;
+  }
+
+  .overlayFraud {
+    top: 8%;
+    right: 6%;
+  }
+
+  .overlayResolve {
+    top: 6%;
+    left: 6%;
+    right: 30%;
+  }
+
+  .overlayDelivered {
+    bottom: 16%;
+  }
+}
