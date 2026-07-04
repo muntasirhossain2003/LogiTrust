@@ -32,7 +32,7 @@ const deliveredOpacityAt = transform([0.7, 0.75, 1], [0, 1, 1]);
 const riskScoreAt = transform([0.22, 0.4], [0, 87]);
 
 function frameSrc(index: number): string {
-  return `/frames/frame_${String(index).padStart(4, "0")}.jpg`;
+  return `/frames/frame_${String(index).padStart(4, "0")}.webp`;
 }
 
 export default function SupplyChainScroll() {
