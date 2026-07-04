@@ -8,7 +8,7 @@ The hero is a scroll-driven animation: a package travels through a 5-stage suppl
 
 - [Next.js](https://nextjs.org) (App Router) + TypeScript
 - [Motion](https://motion.dev) (Framer Motion) — `useScroll` + `useTransform` for scroll-linked frame scrubbing and overlay fades
-- Canvas-based rendering over a 320-frame WebP sequence in `public/frames/` (~8MB total)
+- Canvas-based rendering over a 320-frame 1280×720 WebP sequence in `public/frames/` (~17MB total)
 
 ## How the hero works
 

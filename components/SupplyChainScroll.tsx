@@ -5,8 +5,8 @@ import { transform, useMotionValueEvent, useScroll } from "motion/react";
 import styles from "./SupplyChainScroll.module.css";
 
 const FRAME_COUNT = 320;
-const FRAME_WIDTH = 960;
-const FRAME_HEIGHT = 540;
+const FRAME_WIDTH = 1280;
+const FRAME_HEIGHT = 720;
 // Frames 1-80 are enough to start scrolling (beat 1 -> 2); the rest stream in behind.
 const PRIORITY_COUNT = 80;
 
