@@ -25,6 +25,45 @@
   height: 100%;
 }
 
+/* Ambient tech atmosphere around the artwork: a fine grid plus drifting
+   color glows, masked to the edges so the centerpiece stays untouched */
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(30, 42, 69, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 42, 69, 0.16) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0.22;
+  -webkit-mask-image: radial-gradient(ellipse 70% 62% at 50% 48%, transparent 58%, #000 100%);
+  mask-image: radial-gradient(ellipse 70% 62% at 50% 48%, transparent 58%, #000 100%);
+}
+
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 30% at 12% 8%, rgba(77, 141, 255, 0.22), transparent 70%),
+    radial-gradient(34% 28% at 90% 14%, rgba(34, 211, 238, 0.16), transparent 70%),
+    radial-gradient(40% 30% at 85% 92%, rgba(77, 141, 255, 0.14), transparent 70%);
+  animation: glow-drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes glow-drift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1.5%, 1.5%, 0) scale(1.06);
+  }
+}
+
 /* ---------- loading state ---------- */
 
 .loader {
@@ -367,7 +406,8 @@
 @media (prefers-reduced-motion: reduce) {
   .scrollHintArrow,
   .loaderMark,
-  .pulseDot {
+  .pulseDot,
+  .stage::after {
     animation: none;
   }
 }
