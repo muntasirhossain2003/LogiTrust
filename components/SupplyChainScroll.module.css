@@ -7,25 +7,25 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* svh, not dvh: dvh resizes as the mobile URL bar collapses, which makes a
+     pinned hero jump mid-scroll */
+  height: 100svh;
   overflow: hidden;
   background: #f4f5f7;
 }
 
 .stage {
-  position: relative;
-  width: min(100%, 178vh);
-  margin: 0 auto;
+  position: absolute;
+  inset: 0;
 }
 
 .canvas {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
 }
+
+/* ---------- loading state ---------- */
 
 .loader {
   position: absolute;
@@ -34,32 +34,60 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 16px;
   background: #f4f5f7;
-  z-index: 3;
+  z-index: 5;
 }
 
-.loaderLabel {
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.loaderMark {
+  width: 44px;
+  height: 50px;
+  background: linear-gradient(160deg, #4d8dff, #2f6df6 60%, #1e4fd6);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  animation: mark-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mark-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.88);
+    opacity: 0.75;
+  }
+}
+
+.loaderBrand {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: #1e2a45;
 }
 
 .loaderTrack {
-  width: min(260px, 60%);
+  width: min(280px, 60%);
   height: 4px;
   border-radius: 999px;
-  background: rgba(30, 42, 69, 0.15);
+  background: rgba(30, 42, 69, 0.14);
   overflow: hidden;
 }
 
 .loaderBar {
   height: 100%;
   border-radius: 999px;
-  background: #2f6df6;
+  background: linear-gradient(90deg, #4d8dff, #2f6df6);
   transition: width 150ms ease-out;
 }
+
+.loaderPct {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.78rem;
+  color: #7a849c;
+}
+
+/* ---------- overlays ---------- */
 
 .overlay {
   position: absolute;
@@ -68,93 +96,197 @@
   color: #1e2a45;
 }
 
+/* Frosted-glass backing so overlay copy stays readable no matter what the
+   frame behind it looks like */
+.panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  box-shadow:
+    0 1px 2px rgba(30, 42, 69, 0.06),
+    0 12px 40px rgba(30, 42, 69, 0.16);
+  padding: 26px 30px;
+}
+
+.panelChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  box-shadow:
+    0 1px 2px rgba(30, 42, 69, 0.06),
+    0 12px 40px rgba(30, 42, 69, 0.18);
+  padding: 14px 30px;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #067a58;
+}
+
+.checkIcon {
+  width: clamp(24px, 2.6vw, 34px);
+  height: clamp(24px, 2.6vw, 34px);
+  flex-shrink: 0;
+}
+
 .overlayIntro {
-  top: 8%;
-  left: 5%;
-  max-width: 24rem;
+  /* keep clear of the fixed site header */
+  top: clamp(88px, 13vh, 160px);
+  left: clamp(20px, 5vw, 72px);
+  max-width: 30rem;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(47, 109, 246, 0.12);
+  border: 1px solid rgba(47, 109, 246, 0.25);
+  color: #1e4fd6;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.heading {
+  font-size: clamp(1.9rem, 4.2vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.headingAccent {
+  background: linear-gradient(100deg, #2f6df6, #4d8dff 70%, #22b8cf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtext {
+  margin-top: 12px;
+  font-size: clamp(0.9rem, 1.6vw, 1.08rem);
+  line-height: 1.5;
+  color: #4a5570;
 }
 
 .overlayFraud {
-  top: 14%;
-  right: 6%;
+  top: clamp(88px, 14vh, 180px);
+  right: clamp(20px, 5vw, 72px);
+}
+
+.fraudCard {
+  min-width: 220px;
+  background: rgba(24, 32, 54, 0.88);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(24, 32, 54, 0.35);
+  padding: 18px 22px;
+  color: #ffffff;
+}
+
+.fraudHead {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  text-align: right;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.pulseDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff5a4e;
+  box-shadow: 0 0 0 0 rgba(255, 90, 78, 0.6);
+  animation: dot-pulse 1.4s ease-out infinite;
+}
+
+@keyframes dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 90, 78, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(255, 90, 78, 0);
+  }
+}
+
+.fraudScoreRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.fraudScoreLabel {
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.fraudScoreValue {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #ff6b5e;
+  font-variant-numeric: tabular-nums;
 }
 
 .overlayResolve {
-  top: 10%;
-  left: 5%;
-  max-width: 20rem;
+  top: clamp(88px, 13vh, 160px);
+  left: clamp(20px, 5vw, 72px);
+  max-width: 23rem;
+}
+
+.label {
+  display: inline-block;
+  padding: 6px 13px;
+  border-radius: 9px;
+  background: rgba(30, 42, 69, 0.92);
+  color: #ffffff;
+  font-size: clamp(0.82rem, 1.5vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(30, 42, 69, 0.18);
 }
 
 .overlayDelivered {
-  bottom: 12%;
+  bottom: clamp(120px, 18vh, 190px);
   left: 0;
   right: 0;
   text-align: center;
 }
 
-.heading {
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.subtext {
-  margin-top: 10px;
-  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
-  line-height: 1.45;
-  color: #4a5570;
-}
-
-.label {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(30, 42, 69, 0.92);
-  color: #ffffff;
-  font-size: clamp(0.8rem, 1.5vw, 1rem);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.overlayFraud .label {
-  background: rgba(196, 52, 45, 0.94);
-}
-
-.riskScore {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: clamp(0.8rem, 1.4vw, 0.95rem);
-  font-weight: 600;
-  color: #c4342d;
-  background: rgba(255, 255, 255, 0.85);
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-
-.labelLarge {
-  font-size: clamp(1.4rem, 3.4vw, 2.2rem);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #0e7a5f;
-}
+/* ---------- scroll hint + journey tracker ---------- */
 
 .scrollHint {
   position: absolute;
-  bottom: 4%;
+  bottom: 92px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
+  gap: 7px;
+  font-size: 0.72rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7a849c;
+  color: #5c677f;
+  white-space: nowrap;
   z-index: 2;
 }
 
@@ -172,26 +304,127 @@
   }
 }
 
+.tracker {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2.4vw, 26px);
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 8px 32px rgba(30, 42, 69, 0.14);
+  z-index: 3;
+  max-width: calc(100vw - 32px);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(30, 42, 69, 0.22);
+  transition:
+    background 250ms ease,
+    box-shadow 250ms ease,
+    transform 250ms ease;
+}
+
+.stepLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #7a849c;
+  transition: color 250ms ease;
+  white-space: nowrap;
+}
+
+.stepDone .stepDot {
+  background: #9db6f5;
+}
+
+.stepActive .stepDot {
+  background: #2f6df6;
+  transform: scale(1.25);
+  box-shadow: 0 0 0 5px rgba(47, 109, 246, 0.18);
+}
+
+.stepActive .stepLabel {
+  color: #1e2a45;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollHintArrow,
+  .loaderMark,
+  .pulseDot {
+    animation: none;
+  }
+}
+
+/* ---------- responsive ---------- */
+
 @media (max-width: 640px) {
   .overlayIntro {
-    top: 6%;
-    left: 6%;
-    right: 6%;
+    left: 16px;
+    right: 16px;
     max-width: none;
   }
 
+  .panel {
+    padding: 20px 22px;
+  }
+
   .overlayFraud {
-    top: 8%;
-    right: 6%;
+    right: 16px;
+  }
+
+  .fraudCard {
+    min-width: 190px;
+    padding: 15px 18px;
+  }
+
+  .fraudScoreValue {
+    font-size: 1.7rem;
   }
 
   .overlayResolve {
-    top: 6%;
-    left: 6%;
-    right: 30%;
+    left: 16px;
+    right: 84px;
   }
 
   .overlayDelivered {
-    bottom: 16%;
+    bottom: 130px;
+  }
+
+  .panelChip {
+    padding: 11px 20px;
+  }
+
+  .scrollHint {
+    bottom: 84px;
+  }
+
+  .stepLabel {
+    display: none;
+  }
+
+  .stepActive .stepLabel {
+    display: inline;
+  }
+
+  .tracker {
+    gap: 12px;
+    padding: 11px 18px;
   }
 }
