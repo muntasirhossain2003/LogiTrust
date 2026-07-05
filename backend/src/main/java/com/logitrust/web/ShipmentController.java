@@ -1,11 +1,13 @@
 package com.logitrust.web;
 
 import com.logitrust.dto.AssignCourierRequest;
+import com.logitrust.dto.ChainVerificationResponse;
 import com.logitrust.dto.CreateShipmentRequest;
 import com.logitrust.dto.PublicTrackingResponse;
 import com.logitrust.dto.ShipmentResponse;
 import com.logitrust.dto.TransitUpdateRequest;
 import com.logitrust.security.JwtService;
+import com.logitrust.service.CustodyChainService;
 import com.logitrust.service.ShipmentService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -26,9 +28,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
+    private final CustodyChainService custodyChainService;
 
-    public ShipmentController(ShipmentService shipmentService) {
+    public ShipmentController(ShipmentService shipmentService, CustodyChainService custodyChainService) {
         this.shipmentService = shipmentService;
+        this.custodyChainService = custodyChainService;
     }
 
     @PostMapping
@@ -90,6 +94,19 @@ public class ShipmentController {
             @PathVariable UUID id) {
         return ResponseEntity.ok(ShipmentResponse.from(
                 shipmentService.dispute(claims.userId(), id)));
+    }
+
+    /**
+     * Full chain history + integrity check result (FR-3.2, FR-3.4). Reuses
+     * getForUser purely for its authorization + existence check — admin or
+     * a party actually involved in this shipment.
+     */
+    @GetMapping("/{id}/custody-chain")
+    public ResponseEntity<ChainVerificationResponse> custodyChain(
+            @AuthenticationPrincipal JwtService.AccessTokenClaims claims,
+            @PathVariable UUID id) {
+        shipmentService.getForUser(claims.userId(), id);
+        return ResponseEntity.ok(custodyChainService.verifyChain(id));
     }
 
     /** Public tracking by code — permitted without auth in SecurityConfig. */
