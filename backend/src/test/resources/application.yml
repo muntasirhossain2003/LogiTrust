@@ -19,3 +19,6 @@ app:
     access-token-ttl-seconds: 900
     otp-pending-ttl-seconds: 300
     refresh-token-ttl-seconds: 604800
+  encryption:
+    # base64 of 32 zero bytes - fine for tests, never reused for real data
+    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=

@@ -46,6 +46,8 @@ app:
     # "smtp" sends real email via the spring.mail settings above.
     mode: ${MAIL_MODE:log}
     from: ${MAIL_FROM:${MAIL_USERNAME:no-reply@logitrust.dev}}
+  encryption:
+    key: ${ENCRYPTION_KEY:}
 
 management:
   endpoints:
