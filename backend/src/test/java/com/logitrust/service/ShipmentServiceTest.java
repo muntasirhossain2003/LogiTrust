@@ -12,6 +12,7 @@ import com.logitrust.domain.Shipment;
 import com.logitrust.domain.ShipmentStatus;
 import com.logitrust.domain.User;
 import com.logitrust.dto.CreateShipmentRequest;
+import com.logitrust.dto.TransitUpdateRequest;
 import com.logitrust.exception.ForbiddenOperationException;
 import com.logitrust.exception.IllegalStateTransitionException;
 import com.logitrust.repository.ShipmentItemRepository;
@@ -29,6 +30,7 @@ class ShipmentServiceTest {
     private ShipmentRepository shipmentRepository;
     private ShipmentItemRepository shipmentItemRepository;
     private UserRepository userRepository;
+    private CustodyChainService custodyChainService;
     private ShipmentService service;
 
     private User manufacturer;
@@ -41,7 +43,8 @@ class ShipmentServiceTest {
         shipmentRepository = mock(ShipmentRepository.class);
         shipmentItemRepository = mock(ShipmentItemRepository.class);
         userRepository = mock(UserRepository.class);
-        service = new ShipmentService(shipmentRepository, shipmentItemRepository, userRepository);
+        custodyChainService = mock(CustodyChainService.class);
+        service = new ShipmentService(shipmentRepository, shipmentItemRepository, userRepository, custodyChainService);
 
         when(shipmentRepository.save(any(Shipment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(shipmentRepository.existsByTrackingCode(any())).thenReturn(false);
@@ -83,6 +86,10 @@ class ShipmentServiceTest {
         return new CreateShipmentRequest(
                 "Factory A", "Store B", null,
                 List.of(new CreateShipmentRequest.Item("SN-001", "Insulin pack", ProductCategory.PHARMA)));
+    }
+
+    private TransitUpdateRequest transitRequest(ShipmentStatus status) {
+        return new TransitUpdateRequest(status, "Checkpoint A", null);
     }
 
     // ---------- create ----------
@@ -161,10 +168,12 @@ class ShipmentServiceTest {
         s.setCurrentCourier(courier);
         User otherCourier = user(Role.COURIER, "other@t.dev");
 
-        assertThatThrownBy(() -> service.updateTransitStatus(otherCourier.getId(), s.getId(), ShipmentStatus.IN_TRANSIT))
+        assertThatThrownBy(() -> service.updateTransitStatus(
+                        otherCourier.getId(), s.getId(), transitRequest(ShipmentStatus.IN_TRANSIT)))
                 .isInstanceOf(ForbiddenOperationException.class);
 
-        Shipment updated = service.updateTransitStatus(courier.getId(), s.getId(), ShipmentStatus.IN_TRANSIT);
+        Shipment updated = service.updateTransitStatus(
+                courier.getId(), s.getId(), transitRequest(ShipmentStatus.IN_TRANSIT));
         assertThat(updated.getStatus()).isEqualTo(ShipmentStatus.IN_TRANSIT);
     }
 
@@ -173,7 +182,8 @@ class ShipmentServiceTest {
         Shipment s = shipmentInState(ShipmentStatus.IN_TRANSIT);
         s.setCurrentCourier(courier);
 
-        assertThatThrownBy(() -> service.updateTransitStatus(courier.getId(), s.getId(), ShipmentStatus.DELIVERED))
+        assertThatThrownBy(() -> service.updateTransitStatus(
+                        courier.getId(), s.getId(), transitRequest(ShipmentStatus.DELIVERED)))
                 .isInstanceOf(IllegalStateTransitionException.class);
     }
 
@@ -183,7 +193,8 @@ class ShipmentServiceTest {
         s.setCurrentCourier(courier);
         s.setFrozen(true);
 
-        assertThatThrownBy(() -> service.updateTransitStatus(courier.getId(), s.getId(), ShipmentStatus.AT_CHECKPOINT))
+        assertThatThrownBy(() -> service.updateTransitStatus(
+                        courier.getId(), s.getId(), transitRequest(ShipmentStatus.AT_CHECKPOINT)))
                 .isInstanceOf(IllegalStateTransitionException.class)
                 .hasMessageContaining("frozen");
     }

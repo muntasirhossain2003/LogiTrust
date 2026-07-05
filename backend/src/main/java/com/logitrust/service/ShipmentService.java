@@ -6,6 +6,7 @@ import com.logitrust.domain.ShipmentItem;
 import com.logitrust.domain.ShipmentStatus;
 import com.logitrust.domain.User;
 import com.logitrust.dto.CreateShipmentRequest;
+import com.logitrust.dto.TransitUpdateRequest;
 import com.logitrust.exception.ForbiddenOperationException;
 import com.logitrust.exception.IllegalStateTransitionException;
 import com.logitrust.exception.ShipmentNotFoundException;
@@ -27,15 +28,18 @@ public class ShipmentService {
     private final ShipmentRepository shipmentRepository;
     private final ShipmentItemRepository shipmentItemRepository;
     private final UserRepository userRepository;
+    private final CustodyChainService custodyChainService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ShipmentService(
             ShipmentRepository shipmentRepository,
             ShipmentItemRepository shipmentItemRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            CustodyChainService custodyChainService) {
         this.shipmentRepository = shipmentRepository;
         this.shipmentItemRepository = shipmentItemRepository;
         this.userRepository = userRepository;
+        this.custodyChainService = custodyChainService;
     }
 
     @Transactional
@@ -73,7 +77,9 @@ public class ShipmentService {
                     .build());
         }
 
-        return shipmentRepository.save(shipment);
+        Shipment saved = shipmentRepository.save(shipment);
+        custodyChainService.appendRecord(saved, null, manufacturer, request.originLabel(), "CREATED", null);
+        return saved;
     }
 
     @Transactional
@@ -96,11 +102,15 @@ public class ShipmentService {
 
         transition(shipment, ShipmentStatus.ASSIGNED);
         shipment.setCurrentCourier(courier);
-        return shipmentRepository.save(shipment);
+        Shipment saved = shipmentRepository.save(shipment);
+        custodyChainService.appendRecord(
+                saved, shipment.getManufacturer(), courier, shipment.getOriginLabel(), "ASSIGNED", null);
+        return saved;
     }
 
     @Transactional
-    public Shipment updateTransitStatus(UUID actorId, UUID shipmentId, ShipmentStatus target) {
+    public Shipment updateTransitStatus(UUID actorId, UUID shipmentId, TransitUpdateRequest request) {
+        ShipmentStatus target = request.status();
         if (target != ShipmentStatus.IN_TRANSIT && target != ShipmentStatus.AT_CHECKPOINT) {
             throw new IllegalStateTransitionException(
                     "Couriers can only move a shipment to IN_TRANSIT or AT_CHECKPOINT.");
@@ -115,7 +125,12 @@ public class ShipmentService {
         }
 
         transition(shipment, target);
-        return shipmentRepository.save(shipment);
+        Shipment saved = shipmentRepository.save(shipment);
+        // Custody doesn't change hands at a checkpoint — from/to are both the
+        // courier — this record is a location + condition log, per FR-2.4.
+        custodyChainService.appendRecord(
+                saved, actor, actor, request.location(), target.name(), request.conditionData());
+        return saved;
     }
 
     @Transactional
@@ -139,8 +154,15 @@ public class ShipmentService {
             shipment.setDestinationParty(actor);
         }
 
+        User fromParty = shipment.getCurrentCourier() != null
+                ? shipment.getCurrentCourier()
+                : shipment.getManufacturer();
+
         transition(shipment, ShipmentStatus.DELIVERED);
-        return shipmentRepository.save(shipment);
+        Shipment saved = shipmentRepository.save(shipment);
+        custodyChainService.appendRecord(
+                saved, fromParty, actor, shipment.getDestinationLabel(), "DELIVERED", null);
+        return saved;
     }
 
     @Transactional

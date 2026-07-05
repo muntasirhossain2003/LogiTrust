@@ -72,7 +72,7 @@ public class ShipmentController {
             @PathVariable UUID id,
             @Valid @RequestBody TransitUpdateRequest request) {
         return ResponseEntity.ok(ShipmentResponse.from(
-                shipmentService.updateTransitStatus(claims.userId(), id, request.status())));
+                shipmentService.updateTransitStatus(claims.userId(), id, request)));
     }
 
     @PostMapping("/{id}/confirm-handoff")
