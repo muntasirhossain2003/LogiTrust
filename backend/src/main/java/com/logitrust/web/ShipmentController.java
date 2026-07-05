@@ -2,6 +2,7 @@ package com.logitrust.web;
 
 import com.logitrust.dto.AssignCourierRequest;
 import com.logitrust.dto.CreateShipmentRequest;
+import com.logitrust.dto.PublicTrackingResponse;
 import com.logitrust.dto.ShipmentResponse;
 import com.logitrust.dto.TransitUpdateRequest;
 import com.logitrust.security.JwtService;
@@ -89,5 +90,12 @@ public class ShipmentController {
             @PathVariable UUID id) {
         return ResponseEntity.ok(ShipmentResponse.from(
                 shipmentService.dispute(claims.userId(), id)));
+    }
+
+    /** Public tracking by code — permitted without auth in SecurityConfig. */
+    @GetMapping("/{trackingCode}/public")
+    public ResponseEntity<PublicTrackingResponse> track(@PathVariable String trackingCode) {
+        return ResponseEntity.ok(PublicTrackingResponse.from(
+                shipmentService.getByTrackingCode(trackingCode)));
     }
 }
