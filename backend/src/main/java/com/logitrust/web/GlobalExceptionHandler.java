@@ -3,9 +3,12 @@ package com.logitrust.web;
 import com.logitrust.dto.ErrorResponse;
 import com.logitrust.exception.AccountLockedException;
 import com.logitrust.exception.EmailAlreadyRegisteredException;
+import com.logitrust.exception.ForbiddenOperationException;
+import com.logitrust.exception.IllegalStateTransitionException;
 import com.logitrust.exception.InvalidCredentialsException;
 import com.logitrust.exception.InvalidOtpException;
 import com.logitrust.exception.InvalidTokenException;
+import com.logitrust.exception.ShipmentNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.stream.Collectors;
@@ -36,6 +39,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ShipmentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ShipmentNotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(
+            ForbiddenOperationException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(IllegalStateTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalTransition(
+            IllegalStateTransitionException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
