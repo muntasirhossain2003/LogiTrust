@@ -2,6 +2,7 @@ package com.logitrust.web;
 
 import com.logitrust.dto.ErrorResponse;
 import com.logitrust.exception.AccountLockedException;
+import com.logitrust.exception.CustodyRecordNotFoundException;
 import com.logitrust.exception.EmailAlreadyRegisteredException;
 import com.logitrust.exception.ForbiddenOperationException;
 import com.logitrust.exception.IllegalStateTransitionException;
@@ -41,8 +42,8 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(ShipmentNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(ShipmentNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler({ShipmentNotFoundException.class, CustodyRecordNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 

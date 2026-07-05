@@ -6,6 +6,7 @@ import com.logitrust.domain.Shipment;
 import com.logitrust.domain.User;
 import com.logitrust.dto.ChainVerificationResponse;
 import com.logitrust.dto.ConditionData;
+import com.logitrust.exception.CustodyRecordNotFoundException;
 import com.logitrust.repository.CustodyRecordRepository;
 import com.logitrust.security.EncryptionService;
 import java.nio.charset.StandardCharsets;
@@ -125,6 +126,22 @@ public class CustodyChainService {
         }
 
         return new ChainVerificationResponse(brokenAt == null, chain.size(), brokenAt, entries);
+    }
+
+    /**
+     * Admin-only demo hook (SRS 12 risk mitigation): simulates a malicious
+     * direct-database edit by mutating a record's location WITHOUT touching
+     * its recordHash or any other record's previousRecordHash — exactly what
+     * an attacker with raw DB access would do. Never call this from normal
+     * application flow; it exists purely so verifyChain's detection can be
+     * demonstrated live.
+     */
+    @Transactional
+    public CustodyRecord tamperRecord(java.util.UUID recordId) {
+        CustodyRecord record = custodyRecordRepository.findById(recordId)
+                .orElseThrow(CustodyRecordNotFoundException::new);
+        record.setLocation(record.getLocation() + " [TAMPERED " + Instant.now() + "]");
+        return custodyRecordRepository.save(record);
     }
 
     public ConditionData decryptConditionData(String ciphertext) {
