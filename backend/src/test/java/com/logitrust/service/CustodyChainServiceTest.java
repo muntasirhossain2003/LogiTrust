@@ -124,6 +124,20 @@ class CustodyChainServiceTest {
     }
 
     @Test
+    void appendRecord_timestampHasNoSubMillisecondComponent() {
+        // Regression guard: Postgres TIMESTAMPTZ round-trips at microsecond
+        // precision while Instant.now() carries nanoseconds. If the hash is
+        // computed from the untruncated value, verifyChain recomputes a
+        // different hash after ANY real save+reload and reports false
+        // tampering on every record, always. Caught live against real
+        // Postgres - the H2 test DB alone does not reproduce it.
+        CustodyRecord record = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
+
+        assertThat(record.getTimestamp())
+                .isEqualTo(record.getTimestamp().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+    }
+
+    @Test
     void appendRecord_encryptsConditionData_rawValueNeverStoredInTheClear() {
         ConditionData reading = new ConditionData(4.5, 60.0);
 
@@ -162,10 +176,11 @@ class CustodyChainServiceTest {
     }
 
     @Test
-    void verifyChain_directContentEdit_isDetectedAtTheEditedRecord() {
+    void verifyChain_directContentEdit_breaksTheTamperedRecordAndEveryOneAfterIt() {
         service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
         CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null);
         service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null);
+        service.appendRecord(shipment, courier, retailer, "Store B", "DELIVERED", null);
 
         // Simulate a raw DB edit: change content, leave recordHash untouched.
         second.setLocation("Tampered Location");
@@ -175,8 +190,13 @@ class CustodyChainServiceTest {
 
         assertThat(result.intact()).isFalse();
         assertThat(result.brokenAtSequence()).isEqualTo(1);
-        assertThat(result.records().get(1).valid()).isFalse();
-        assertThat(result.records().get(2).valid()).isFalse(); // cascades forward
+        assertThat(result.records().get(0).valid()).isTrue(); // untouched, before the break
+        assertThat(result.records().get(1).valid()).isFalse(); // the tampered record itself
+        // Everything after must also read broken - record #3's own content was
+        // never touched and its self-hash still checks out, but it rests on a
+        // corrupted history, so it must not read as trustworthy either.
+        assertThat(result.records().get(2).valid()).isFalse();
+        assertThat(result.records().get(3).valid()).isFalse();
     }
 
     @Test

@@ -60,7 +60,11 @@ public class CustodyChainService {
                 .orElseGet(() -> genesisHash(shipment.getId().toString()));
 
         String conditionCiphertext = conditionData == null ? null : encrypt(conditionData);
-        Instant timestamp = Instant.now();
+        // Truncate to millis: Instant.now() carries nanosecond precision, but
+        // TIMESTAMPTZ round-trips at microsecond precision (and other DBs may be
+        // coarser still). Hash a value that survives the store/reload exactly,
+        // or every verification looks like tampering that never happened.
+        Instant timestamp = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
 
         String recordHash = computeHash(
                 shipment.getId(), sequenceNumber,
@@ -105,11 +109,16 @@ public class CustodyChainService {
             // This is what catches a tamper even if the attacker also patched the
             // tampered row's own recordHash to stay self-consistent.
             boolean linkValid = record.getPreviousRecordHash().equals(expectedPrevious);
-            boolean valid = selfValid && linkValid;
 
-            if (!valid && brokenAt == null) {
+            if ((!selfValid || !linkValid) && brokenAt == null) {
                 brokenAt = record.getSequenceNumber();
             }
+            // Once broken, every record from that point on is unverifiable — not
+            // just the one that failed its own check. A later record's own hash
+            // can still self-check "valid" while resting on a corrupted history,
+            // so it must not read as trustworthy (SRS 10.4: "every subsequent
+            // record's previousRecordHash reference breaks").
+            boolean valid = brokenAt == null;
 
             entries.add(new ChainVerificationResponse.Entry(
                     record.getSequenceNumber(),
