@@ -89,7 +89,7 @@ class ShipmentServiceTest {
     }
 
     private TransitUpdateRequest transitRequest(ShipmentStatus status) {
-        return new TransitUpdateRequest(status, "Checkpoint A", null);
+        return new TransitUpdateRequest(status, "Checkpoint A", null, null);
     }
 
     // ---------- create ----------

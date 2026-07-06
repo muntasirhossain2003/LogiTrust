@@ -51,7 +51,8 @@ public class CustodyChainService {
             User toParty,
             String location,
             String eventType,
-            ConditionData conditionData) {
+            ConditionData conditionData,
+            String incidentNote) {
 
         int sequenceNumber = custodyRecordRepository.countByShipmentId(shipment.getId());
         String previousHash = custodyRecordRepository
@@ -69,7 +70,7 @@ public class CustodyChainService {
         String recordHash = computeHash(
                 shipment.getId(), sequenceNumber,
                 fromParty != null ? fromParty.getId() : null,
-                toParty.getId(), location, eventType, conditionCiphertext, timestamp, previousHash);
+                toParty.getId(), location, eventType, conditionCiphertext, incidentNote, timestamp, previousHash);
 
         CustodyRecord record = CustodyRecord.builder()
                 .shipment(shipment)
@@ -79,6 +80,7 @@ public class CustodyChainService {
                 .location(location)
                 .eventType(eventType)
                 .conditionDataCiphertext(conditionCiphertext)
+                .incidentNote(incidentNote)
                 .previousRecordHash(previousHash)
                 .recordHash(recordHash)
                 .timestamp(timestamp)
@@ -100,7 +102,8 @@ public class CustodyChainService {
                     shipmentId, record.getSequenceNumber(),
                     record.getFromParty() != null ? record.getFromParty().getId() : null,
                     record.getToParty().getId(), record.getLocation(), record.getEventType(),
-                    record.getConditionDataCiphertext(), record.getTimestamp(), record.getPreviousRecordHash());
+                    record.getConditionDataCiphertext(), record.getIncidentNote(),
+                    record.getTimestamp(), record.getPreviousRecordHash());
 
             // Self-check: does the row's own stored hash match its stored content?
             boolean selfValid = recomputedHash.equals(record.getRecordHash());
@@ -178,7 +181,7 @@ public class CustodyChainService {
 
     private String computeHash(
             java.util.UUID shipmentId, int sequenceNumber, java.util.UUID fromPartyId, java.util.UUID toPartyId,
-            String location, String eventType, String conditionCiphertext, Instant timestamp,
+            String location, String eventType, String conditionCiphertext, String incidentNote, Instant timestamp,
             String previousHash) {
         String canonical = String.join("|",
                 shipmentId.toString(),
@@ -188,6 +191,7 @@ public class CustodyChainService {
                 location,
                 eventType,
                 conditionCiphertext != null ? conditionCiphertext : "NONE",
+                incidentNote != null ? incidentNote : "NONE",
                 timestamp.toString(),
                 previousHash);
         return sha256Hex(canonical);

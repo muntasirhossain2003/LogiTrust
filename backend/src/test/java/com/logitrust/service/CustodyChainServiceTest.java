@@ -107,7 +107,7 @@ class CustodyChainServiceTest {
 
     @Test
     void appendRecord_firstRecord_chainsToAGenesisHash() {
-        CustodyRecord record = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
+        CustodyRecord record = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
 
         assertThat(record.getSequenceNumber()).isZero();
         assertThat(record.getPreviousRecordHash()).isNotBlank();
@@ -116,8 +116,8 @@ class CustodyChainServiceTest {
 
     @Test
     void appendRecord_secondRecord_chainsToFirstRecordsHash() {
-        CustodyRecord first = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
-        CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null);
+        CustodyRecord first = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
+        CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null, null);
 
         assertThat(second.getSequenceNumber()).isEqualTo(1);
         assertThat(second.getPreviousRecordHash()).isEqualTo(first.getRecordHash());
@@ -131,7 +131,7 @@ class CustodyChainServiceTest {
         // different hash after ANY real save+reload and reports false
         // tampering on every record, always. Caught live against real
         // Postgres - the H2 test DB alone does not reproduce it.
-        CustodyRecord record = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
+        CustodyRecord record = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
 
         assertThat(record.getTimestamp())
                 .isEqualTo(record.getTimestamp().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
@@ -142,7 +142,7 @@ class CustodyChainServiceTest {
         ConditionData reading = new ConditionData(4.5, 60.0);
 
         CustodyRecord record = service.appendRecord(
-                shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", reading);
+                shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", reading, null);
 
         assertThat(record.getConditionDataCiphertext()).isNotNull().doesNotContain("4.5");
         ConditionData decrypted = service.decryptConditionData(record.getConditionDataCiphertext());
@@ -154,10 +154,10 @@ class CustodyChainServiceTest {
 
     @Test
     void verifyChain_untouchedChain_isIntact() {
-        service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
-        service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null);
-        service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null);
-        service.appendRecord(shipment, courier, retailer, "Store B", "DELIVERED", null);
+        service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
+        service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null, null);
+        service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null, null);
+        service.appendRecord(shipment, courier, retailer, "Store B", "DELIVERED", null, null);
 
         ChainVerificationResponse result = service.verifyChain(shipment.getId());
 
@@ -177,10 +177,10 @@ class CustodyChainServiceTest {
 
     @Test
     void verifyChain_directContentEdit_breaksTheTamperedRecordAndEveryOneAfterIt() {
-        service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
-        CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null);
-        service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null);
-        service.appendRecord(shipment, courier, retailer, "Store B", "DELIVERED", null);
+        service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
+        CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null, null);
+        service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null, null);
+        service.appendRecord(shipment, courier, retailer, "Store B", "DELIVERED", null, null);
 
         // Simulate a raw DB edit: change content, leave recordHash untouched.
         second.setLocation("Tampered Location");
@@ -201,9 +201,9 @@ class CustodyChainServiceTest {
 
     @Test
     void verifyChain_editWithForgedSelfHash_stillCaughtByTheNextLink() {
-        service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
-        CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null);
-        service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null);
+        service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
+        CustodyRecord second = service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null, null);
+        service.appendRecord(shipment, courier, courier, "Checkpoint 1", "IN_TRANSIT", null, null);
 
         // A more sophisticated attacker edits the content AND forges this row's
         // own recordHash so its self-check passes in isolation...
@@ -222,8 +222,8 @@ class CustodyChainServiceTest {
 
     @Test
     void tamperRecord_mutatesContentOnly_thenVerifyChainCatchesIt() {
-        CustodyRecord original = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null);
-        service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null);
+        CustodyRecord original = service.appendRecord(shipment, null, manufacturer, "Factory A", "CREATED", null, null);
+        service.appendRecord(shipment, manufacturer, courier, "Factory A", "ASSIGNED", null, null);
         String originalHash = original.getRecordHash();
 
         CustodyRecord tampered = service.tamperRecord(original.getId());

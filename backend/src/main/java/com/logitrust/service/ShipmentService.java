@@ -78,7 +78,7 @@ public class ShipmentService {
         }
 
         Shipment saved = shipmentRepository.save(shipment);
-        custodyChainService.appendRecord(saved, null, manufacturer, request.originLabel(), "CREATED", null);
+        custodyChainService.appendRecord(saved, null, manufacturer, request.originLabel(), "CREATED", null, null);
         return saved;
     }
 
@@ -104,7 +104,7 @@ public class ShipmentService {
         shipment.setCurrentCourier(courier);
         Shipment saved = shipmentRepository.save(shipment);
         custodyChainService.appendRecord(
-                saved, shipment.getManufacturer(), courier, shipment.getOriginLabel(), "ASSIGNED", null);
+                saved, shipment.getManufacturer(), courier, shipment.getOriginLabel(), "ASSIGNED", null, null);
         return saved;
     }
 
@@ -129,7 +129,8 @@ public class ShipmentService {
         // Custody doesn't change hands at a checkpoint — from/to are both the
         // courier — this record is a location + condition log, per FR-2.4.
         custodyChainService.appendRecord(
-                saved, actor, actor, request.location(), target.name(), request.conditionData());
+                saved, actor, actor, request.location(), target.name(),
+                request.conditionData(), request.incidentNote());
         return saved;
     }
 
@@ -161,7 +162,7 @@ public class ShipmentService {
         transition(shipment, ShipmentStatus.DELIVERED);
         Shipment saved = shipmentRepository.save(shipment);
         custodyChainService.appendRecord(
-                saved, fromParty, actor, shipment.getDestinationLabel(), "DELIVERED", null);
+                saved, fromParty, actor, shipment.getDestinationLabel(), "DELIVERED", null, null);
         return saved;
     }
 

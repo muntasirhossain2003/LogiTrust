@@ -62,6 +62,10 @@ public class CustodyRecord {
     @Column(name = "condition_data_ciphertext")
     private String conditionDataCiphertext;
 
+    /** Optional free-text note (e.g. "box was wet, seal looked broken"). */
+    @Column(name = "incident_note", columnDefinition = "TEXT")
+    private String incidentNote;
+
     @Column(name = "previous_record_hash", nullable = false, length = 64)
     private String previousRecordHash;
 

@@ -62,6 +62,15 @@ public class Shipment {
     @Column(name = "destination_label", nullable = false)
     private String destinationLabel;
 
+    /**
+     * Optional JSON array of expected checkpoint location labels, declared at
+     * creation time. Stands in for a real GPS route graph, which SRS 2.2
+     * explicitly puts out of scope (coordinates are simulated/manual). Null
+     * means route-deviation scoring is skipped for this shipment.
+     */
+    @Column(name = "expected_route_json", columnDefinition = "TEXT")
+    private String expectedRouteJson;
+
     @Column(name = "risk_score", nullable = false)
     @Builder.Default
     private int riskScore = 0;
