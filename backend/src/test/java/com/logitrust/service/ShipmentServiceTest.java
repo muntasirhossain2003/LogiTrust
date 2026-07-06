@@ -85,11 +85,11 @@ class ShipmentServiceTest {
     private CreateShipmentRequest createRequest() {
         return new CreateShipmentRequest(
                 "Factory A", "Store B", null,
-                List.of(new CreateShipmentRequest.Item("SN-001", "Insulin pack", ProductCategory.PHARMA)));
+                List.of(new CreateShipmentRequest.Item("SN-001", "Insulin pack", ProductCategory.PHARMA)), null);
     }
 
     private TransitUpdateRequest transitRequest(ShipmentStatus status) {
-        return new TransitUpdateRequest(status, "Checkpoint A", null, null);
+        return new TransitUpdateRequest(status, "Checkpoint A", null, null, null);
     }
 
     // ---------- create ----------
@@ -118,7 +118,7 @@ class ShipmentServiceTest {
     void create_rejectsCourierAsDestinationParty() {
         CreateShipmentRequest req = new CreateShipmentRequest(
                 "Factory A", "Store B", courier.getEmail(),
-                List.of(new CreateShipmentRequest.Item("SN-002", "Phone", ProductCategory.ELECTRONICS)));
+                List.of(new CreateShipmentRequest.Item("SN-002", "Phone", ProductCategory.ELECTRONICS)), null);
 
         assertThatThrownBy(() -> service.createShipment(manufacturer.getId(), req))
                 .isInstanceOf(IllegalArgumentException.class);

@@ -12,7 +12,9 @@ public record CreateShipmentRequest(
         @NotBlank String originLabel,
         @NotBlank String destinationLabel,
         @Email String destinationPartyEmail,
-        @NotEmpty @Valid List<Item> items) {
+        @NotEmpty @Valid List<Item> items,
+        /** Optional declared checkpoint sequence, feeds the route-deviation fraud factor. */
+        List<String> expectedRoute) {
 
     public record Item(
             @NotBlank String serialNumber,
