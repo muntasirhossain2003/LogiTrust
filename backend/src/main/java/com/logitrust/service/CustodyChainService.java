@@ -156,6 +156,12 @@ public class CustodyChainService {
         return custodyRecordRepository.save(record);
     }
 
+    /** The most recent record for a shipment, if any — used to measure dwell time for the next one. */
+    @Transactional(readOnly = true)
+    public java.util.Optional<CustodyRecord> findLatestRecord(java.util.UUID shipmentId) {
+        return custodyRecordRepository.findTopByShipmentIdOrderBySequenceNumberDesc(shipmentId);
+    }
+
     public ConditionData decryptConditionData(String ciphertext) {
         if (ciphertext == null) {
             return null;

@@ -2,6 +2,7 @@ package com.logitrust.web;
 
 import com.logitrust.dto.AssignCourierRequest;
 import com.logitrust.dto.ChainVerificationResponse;
+import com.logitrust.dto.ConfirmHandoffRequest;
 import com.logitrust.dto.CreateShipmentRequest;
 import com.logitrust.dto.PublicTrackingResponse;
 import com.logitrust.dto.ShipmentResponse;
@@ -83,9 +84,10 @@ public class ShipmentController {
     @PreAuthorize("hasAnyRole('DISTRIBUTOR','RETAILER')")
     public ResponseEntity<ShipmentResponse> confirmHandoff(
             @AuthenticationPrincipal JwtService.AccessTokenClaims claims,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestBody(required = false) ConfirmHandoffRequest request) {
         return ResponseEntity.ok(ShipmentResponse.from(
-                shipmentService.confirmHandoff(claims.userId(), id)));
+                shipmentService.confirmHandoff(claims.userId(), id, request)));
     }
 
     @PostMapping("/{id}/dispute")

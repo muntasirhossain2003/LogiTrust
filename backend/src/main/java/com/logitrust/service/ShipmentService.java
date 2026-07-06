@@ -5,6 +5,8 @@ import com.logitrust.domain.Shipment;
 import com.logitrust.domain.ShipmentItem;
 import com.logitrust.domain.ShipmentStatus;
 import com.logitrust.domain.User;
+import com.logitrust.domain.CustodyRecord;
+import com.logitrust.dto.ConfirmHandoffRequest;
 import com.logitrust.dto.CreateShipmentRequest;
 import com.logitrust.dto.TransitUpdateRequest;
 import com.logitrust.exception.ForbiddenOperationException;
@@ -14,6 +16,8 @@ import com.logitrust.repository.ShipmentItemRepository;
 import com.logitrust.repository.ShipmentRepository;
 import com.logitrust.repository.UserRepository;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -29,17 +33,20 @@ public class ShipmentService {
     private final ShipmentItemRepository shipmentItemRepository;
     private final UserRepository userRepository;
     private final CustodyChainService custodyChainService;
+    private final FraudScoringService fraudScoringService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ShipmentService(
             ShipmentRepository shipmentRepository,
             ShipmentItemRepository shipmentItemRepository,
             UserRepository userRepository,
-            CustodyChainService custodyChainService) {
+            CustodyChainService custodyChainService,
+            FraudScoringService fraudScoringService) {
         this.shipmentRepository = shipmentRepository;
         this.shipmentItemRepository = shipmentItemRepository;
         this.userRepository = userRepository;
         this.custodyChainService = custodyChainService;
+        this.fraudScoringService = fraudScoringService;
     }
 
     @Transactional
@@ -62,6 +69,7 @@ public class ShipmentService {
                 .trackingCode(generateTrackingCode())
                 .originLabel(request.originLabel())
                 .destinationLabel(request.destinationLabel())
+                .expectedRouteJson(fraudScoringService.serializeExpectedRoute(request.expectedRoute()))
                 .build();
 
         for (CreateShipmentRequest.Item item : request.items()) {
@@ -124,18 +132,27 @@ public class ShipmentService {
             throw new ForbiddenOperationException("Only the assigned courier can update transit status.");
         }
 
+        Instant previousEventTimestamp = custodyChainService.findLatestRecord(shipmentId)
+                .map(CustodyRecord::getTimestamp)
+                .orElse(null);
+
         transition(shipment, target);
         Shipment saved = shipmentRepository.save(shipment);
         // Custody doesn't change hands at a checkpoint — from/to are both the
         // courier — this record is a location + condition log, per FR-2.4.
-        custodyChainService.appendRecord(
+        CustodyRecord record = custodyChainService.appendRecord(
                 saved, actor, actor, request.location(), target.name(),
                 request.conditionData(), request.incidentNote());
-        return saved;
+
+        fraudScoringService.scoreCheckpointAndApply(
+                saved, record, request.location(), request.conditionData(),
+                request.scannedSerials(), previousEventTimestamp, record.getTimestamp());
+
+        return shipmentRepository.save(saved);
     }
 
     @Transactional
-    public Shipment confirmHandoff(UUID actorId, UUID shipmentId) {
+    public Shipment confirmHandoff(UUID actorId, UUID shipmentId, ConfirmHandoffRequest request) {
         User actor = loadUser(actorId);
         Shipment shipment = loadShipment(shipmentId);
 
@@ -159,11 +176,23 @@ public class ShipmentService {
                 ? shipment.getCurrentCourier()
                 : shipment.getManufacturer();
 
+        Instant createdAt = shipment.getCreatedAt();
+
         transition(shipment, ShipmentStatus.DELIVERED);
         Shipment saved = shipmentRepository.save(shipment);
-        custodyChainService.appendRecord(
+        CustodyRecord record = custodyChainService.appendRecord(
                 saved, fromParty, actor, shipment.getDestinationLabel(), "DELIVERED", null, null);
-        return saved;
+
+        Integer confirmedItemCount = request != null ? request.confirmedItemCount() : null;
+        fraudScoringService.scoreQuantityMismatchAndApply(saved, record, confirmedItemCount);
+
+        // FR-4.3: fold this shipment's total transit time into the route's
+        // rolling baseline now that it has completed "legitimately" (i.e. it
+        // reached DELIVERED rather than being frozen or disputed mid-transit).
+        double transitSeconds = Duration.between(createdAt, record.getTimestamp()).getSeconds();
+        fraudScoringService.recordCompletedTransit(saved, transitSeconds);
+
+        return shipmentRepository.save(saved);
     }
 
     @Transactional

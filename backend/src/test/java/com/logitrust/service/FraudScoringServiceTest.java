@@ -30,6 +30,7 @@ class FraudScoringServiceTest {
     private ScoringConfigRepository scoringConfigRepository;
     private RouteBaselineRepository routeBaselineRepository;
     private ShipmentItemRepository shipmentItemRepository;
+    private com.logitrust.repository.FraudFlagRepository fraudFlagRepository;
     private FraudScoringService service;
 
     private Shipment shipment;
@@ -40,6 +41,7 @@ class FraudScoringServiceTest {
         scoringConfigRepository = mock(ScoringConfigRepository.class);
         routeBaselineRepository = mock(RouteBaselineRepository.class);
         shipmentItemRepository = mock(ShipmentItemRepository.class);
+        fraudFlagRepository = mock(com.logitrust.repository.FraudFlagRepository.class);
 
         ScoringConfig config = new ScoringConfig();
         config.setId(ScoringConfig.SINGLETON_ID);
@@ -55,7 +57,8 @@ class FraudScoringServiceTest {
         when(scoringConfigRepository.findById(ScoringConfig.SINGLETON_ID)).thenReturn(Optional.of(config));
 
         service = new FraudScoringService(
-                scoringConfigRepository, routeBaselineRepository, shipmentItemRepository, new ObjectMapper());
+                scoringConfigRepository, routeBaselineRepository, shipmentItemRepository,
+                fraudFlagRepository, new ObjectMapper());
 
         manufacturer = User.builder()
                 .id(UUID.randomUUID()).email("mfg@t.dev").passwordHash("x")

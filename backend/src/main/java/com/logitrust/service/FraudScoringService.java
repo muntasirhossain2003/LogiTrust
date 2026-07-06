@@ -1,6 +1,8 @@
 package com.logitrust.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.logitrust.domain.CustodyRecord;
+import com.logitrust.domain.FraudFlag;
 import com.logitrust.domain.ProductCategory;
 import com.logitrust.domain.RouteBaseline;
 import com.logitrust.domain.ScoringConfig;
@@ -10,6 +12,7 @@ import com.logitrust.domain.ShipmentStatus;
 import com.logitrust.dto.ConditionData;
 import com.logitrust.dto.FraudScoreResult;
 import com.logitrust.dto.ScoringFactorResult;
+import com.logitrust.repository.FraudFlagRepository;
 import com.logitrust.repository.RouteBaselineRepository;
 import com.logitrust.repository.ScoringConfigRepository;
 import com.logitrust.repository.ShipmentItemRepository;
@@ -54,16 +57,19 @@ public class FraudScoringService {
     private final ScoringConfigRepository scoringConfigRepository;
     private final RouteBaselineRepository routeBaselineRepository;
     private final ShipmentItemRepository shipmentItemRepository;
+    private final FraudFlagRepository fraudFlagRepository;
     private final ObjectMapper objectMapper;
 
     public FraudScoringService(
             ScoringConfigRepository scoringConfigRepository,
             RouteBaselineRepository routeBaselineRepository,
             ShipmentItemRepository shipmentItemRepository,
+            FraudFlagRepository fraudFlagRepository,
             ObjectMapper objectMapper) {
         this.scoringConfigRepository = scoringConfigRepository;
         this.routeBaselineRepository = routeBaselineRepository;
         this.shipmentItemRepository = shipmentItemRepository;
+        this.fraudFlagRepository = fraudFlagRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -100,6 +106,63 @@ public class FraudScoringService {
     @Transactional(readOnly = true)
     public FraudScoreResult scoreQuantityMismatch(Shipment shipment, Integer confirmedItemCount) {
         return combine(List.of(quantityMismatch(shipment, confirmedItemCount, loadConfig())));
+    }
+
+    /**
+     * Scores a checkpoint and immediately applies the result: updates
+     * {@code shipment.riskScore}, opens a {@link FraudFlag} above the flag
+     * threshold, and freezes the shipment above the freeze threshold
+     * (FR-4.4). Mutates the given shipment in place; the caller is
+     * responsible for persisting it.
+     */
+    @Transactional
+    public FraudScoreResult scoreCheckpointAndApply(
+            Shipment shipment,
+            CustodyRecord triggeringRecord,
+            String location,
+            ConditionData conditionData,
+            List<String> scannedSerials,
+            Instant previousEventTimestamp,
+            Instant eventTimestamp) {
+        FraudScoreResult result = scoreCheckpoint(
+                shipment, location, conditionData, scannedSerials, previousEventTimestamp, eventTimestamp);
+        applyScore(shipment, triggeringRecord, result);
+        return result;
+    }
+
+    @Transactional
+    public FraudScoreResult scoreQuantityMismatchAndApply(
+            Shipment shipment, CustodyRecord triggeringRecord, Integer confirmedItemCount) {
+        FraudScoreResult result = scoreQuantityMismatch(shipment, confirmedItemCount);
+        applyScore(shipment, triggeringRecord, result);
+        return result;
+    }
+
+    private void applyScore(Shipment shipment, CustodyRecord triggeringRecord, FraudScoreResult result) {
+        ScoringConfig config = loadConfig();
+        shipment.setRiskScore(result.totalScore());
+
+        if (result.totalScore() >= config.getFlagThreshold()) {
+            FraudFlag flag = FraudFlag.builder()
+                    .shipment(shipment)
+                    .custodyRecord(triggeringRecord)
+                    .score(result.totalScore())
+                    .factors(serializeFactors(result.factors()))
+                    .build();
+            fraudFlagRepository.save(flag);
+        }
+
+        if (result.totalScore() >= config.getFreezeThreshold()) {
+            shipment.setFrozen(true);
+        }
+    }
+
+    private String serializeFactors(List<ScoringFactorResult> factors) {
+        try {
+            return objectMapper.writeValueAsString(factors);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize fraud score factors", e);
+        }
     }
 
     /** Called once a shipment is DELIVERED, folding its total transit time into the route's baseline. */

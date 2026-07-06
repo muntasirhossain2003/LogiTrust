@@ -6,12 +6,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.logitrust.domain.CustodyRecord;
 import com.logitrust.domain.ProductCategory;
 import com.logitrust.domain.Role;
 import com.logitrust.domain.Shipment;
 import com.logitrust.domain.ShipmentStatus;
 import com.logitrust.domain.User;
 import com.logitrust.dto.CreateShipmentRequest;
+import com.logitrust.dto.FraudScoreResult;
 import com.logitrust.dto.TransitUpdateRequest;
 import com.logitrust.exception.ForbiddenOperationException;
 import com.logitrust.exception.IllegalStateTransitionException;
@@ -31,6 +33,7 @@ class ShipmentServiceTest {
     private ShipmentItemRepository shipmentItemRepository;
     private UserRepository userRepository;
     private CustodyChainService custodyChainService;
+    private FraudScoringService fraudScoringService;
     private ShipmentService service;
 
     private User manufacturer;
@@ -44,10 +47,22 @@ class ShipmentServiceTest {
         shipmentItemRepository = mock(ShipmentItemRepository.class);
         userRepository = mock(UserRepository.class);
         custodyChainService = mock(CustodyChainService.class);
-        service = new ShipmentService(shipmentRepository, shipmentItemRepository, userRepository, custodyChainService);
+        fraudScoringService = mock(FraudScoringService.class);
+        service = new ShipmentService(
+                shipmentRepository, shipmentItemRepository, userRepository, custodyChainService, fraudScoringService);
 
         when(shipmentRepository.save(any(Shipment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(shipmentRepository.existsByTrackingCode(any())).thenReturn(false);
+        when(custodyChainService.appendRecord(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> CustodyRecord.builder()
+                        .id(UUID.randomUUID())
+                        .shipment(inv.getArgument(0))
+                        .timestamp(Instant.now())
+                        .build());
+        when(fraudScoringService.scoreCheckpointAndApply(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new FraudScoreResult(0, List.of()));
+        when(fraudScoringService.scoreQuantityMismatchAndApply(any(), any(), any()))
+                .thenReturn(new FraudScoreResult(0, List.of()));
         when(shipmentItemRepository.existsBySerialNumber(any())).thenReturn(false);
 
         manufacturer = user(Role.MANUFACTURER, "mfg@t.dev");
@@ -77,6 +92,7 @@ class ShipmentServiceTest {
                 .status(status)
                 .originLabel("Factory A")
                 .destinationLabel("Store B")
+                .createdAt(Instant.now())
                 .build();
         when(shipmentRepository.findById(s.getId())).thenReturn(Optional.of(s));
         return s;
@@ -206,7 +222,7 @@ class ShipmentServiceTest {
         Shipment s = shipmentInState(ShipmentStatus.AT_CHECKPOINT);
         s.setDestinationParty(retailer);
 
-        Shipment result = service.confirmHandoff(retailer.getId(), s.getId());
+        Shipment result = service.confirmHandoff(retailer.getId(), s.getId(), null);
 
         assertThat(result.getStatus()).isEqualTo(ShipmentStatus.DELIVERED);
     }
@@ -216,7 +232,7 @@ class ShipmentServiceTest {
         Shipment s = shipmentInState(ShipmentStatus.AT_CHECKPOINT);
         s.setDestinationParty(retailer);
 
-        assertThatThrownBy(() -> service.confirmHandoff(distributor.getId(), s.getId()))
+        assertThatThrownBy(() -> service.confirmHandoff(distributor.getId(), s.getId(), null))
                 .isInstanceOf(ForbiddenOperationException.class);
     }
 
@@ -224,7 +240,7 @@ class ShipmentServiceTest {
     void confirmHandoff_withoutDeclaredParty_recordsTheReceiver() {
         Shipment s = shipmentInState(ShipmentStatus.IN_TRANSIT);
 
-        Shipment result = service.confirmHandoff(distributor.getId(), s.getId());
+        Shipment result = service.confirmHandoff(distributor.getId(), s.getId(), null);
 
         assertThat(result.getStatus()).isEqualTo(ShipmentStatus.DELIVERED);
         assertThat(result.getDestinationParty()).isEqualTo(distributor);
@@ -235,7 +251,7 @@ class ShipmentServiceTest {
         Shipment s = shipmentInState(ShipmentStatus.CREATED);
         s.setDestinationParty(retailer);
 
-        assertThatThrownBy(() -> service.confirmHandoff(retailer.getId(), s.getId()))
+        assertThatThrownBy(() -> service.confirmHandoff(retailer.getId(), s.getId(), null))
                 .isInstanceOf(IllegalStateTransitionException.class);
     }
 
