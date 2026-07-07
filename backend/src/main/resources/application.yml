@@ -48,6 +48,12 @@ app:
     from: ${MAIL_FROM:${MAIL_USERNAME:no-reply@logitrust.dev}}
   encryption:
     key: ${ENCRYPTION_KEY:}
+  huggingface:
+    # Blank token disables this factor entirely - the 5 rule-based factors
+    # keep working with zero external dependency.
+    api-token: ${HF_API_TOKEN:}
+    model: ${HF_MODEL:facebook/bart-large-mnli}
+    timeout-ms: ${HF_TIMEOUT_MS:3000}
 
 management:
   endpoints:
