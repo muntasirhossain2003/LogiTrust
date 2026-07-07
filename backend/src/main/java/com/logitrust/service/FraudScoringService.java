@@ -172,6 +172,17 @@ public class FraudScoringService {
         }
     }
 
+    /** Deserializes a FraudFlag's stored factor breakdown for the admin view (FR-4.5). */
+    public List<ScoringFactorResult> parseFactors(String factorsJson) {
+        try {
+            return objectMapper.readValue(
+                    factorsJson, new com.fasterxml.jackson.core.type.TypeReference<>() {
+                    });
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     /** Called once a shipment is DELIVERED, folding its total transit time into the route's baseline. */
     @Transactional
     public void recordCompletedTransit(Shipment shipment, double transitSeconds) {
