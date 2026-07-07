@@ -146,7 +146,7 @@ public class ShipmentService {
 
         fraudScoringService.scoreCheckpointAndApply(
                 saved, record, request.location(), request.conditionData(),
-                request.scannedSerials(), previousEventTimestamp, record.getTimestamp());
+                request.scannedSerials(), request.incidentNote(), previousEventTimestamp, record.getTimestamp());
 
         return shipmentRepository.save(saved);
     }
