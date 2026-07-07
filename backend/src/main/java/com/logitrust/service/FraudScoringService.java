@@ -58,6 +58,7 @@ public class FraudScoringService {
     private final RouteBaselineRepository routeBaselineRepository;
     private final ShipmentItemRepository shipmentItemRepository;
     private final FraudFlagRepository fraudFlagRepository;
+    private final HuggingFaceRiskService huggingFaceRiskService;
     private final ObjectMapper objectMapper;
 
     public FraudScoringService(
@@ -65,11 +66,13 @@ public class FraudScoringService {
             RouteBaselineRepository routeBaselineRepository,
             ShipmentItemRepository shipmentItemRepository,
             FraudFlagRepository fraudFlagRepository,
+            HuggingFaceRiskService huggingFaceRiskService,
             ObjectMapper objectMapper) {
         this.scoringConfigRepository = scoringConfigRepository;
         this.routeBaselineRepository = routeBaselineRepository;
         this.shipmentItemRepository = shipmentItemRepository;
         this.fraudFlagRepository = fraudFlagRepository;
+        this.huggingFaceRiskService = huggingFaceRiskService;
         this.objectMapper = objectMapper;
     }
 
@@ -92,6 +95,7 @@ public class FraudScoringService {
             String location,
             ConditionData conditionData,
             List<String> scannedSerials,
+            String incidentNote,
             Instant previousEventTimestamp,
             Instant eventTimestamp) {
         ScoringConfig config = loadConfig();
@@ -100,6 +104,7 @@ public class FraudScoringService {
         factors.add(timingAnomaly(shipment, previousEventTimestamp, eventTimestamp, config));
         factors.add(conditionBreach(shipment, conditionData, config));
         factors.add(identityReuse(shipment, scannedSerials, config));
+        factors.add(huggingFaceRiskService.scoreIncidentNote(incidentNote, config.getIncidentTextRiskWeight()));
         return combine(factors);
     }
 
@@ -122,10 +127,12 @@ public class FraudScoringService {
             String location,
             ConditionData conditionData,
             List<String> scannedSerials,
+            String incidentNote,
             Instant previousEventTimestamp,
             Instant eventTimestamp) {
         FraudScoreResult result = scoreCheckpoint(
-                shipment, location, conditionData, scannedSerials, previousEventTimestamp, eventTimestamp);
+                shipment, location, conditionData, scannedSerials, incidentNote,
+                previousEventTimestamp, eventTimestamp);
         applyScore(shipment, triggeringRecord, result);
         return result;
     }

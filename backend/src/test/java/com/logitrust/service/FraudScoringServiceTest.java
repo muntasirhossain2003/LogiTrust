@@ -31,6 +31,7 @@ class FraudScoringServiceTest {
     private RouteBaselineRepository routeBaselineRepository;
     private ShipmentItemRepository shipmentItemRepository;
     private com.logitrust.repository.FraudFlagRepository fraudFlagRepository;
+    private HuggingFaceRiskService huggingFaceRiskService;
     private FraudScoringService service;
 
     private Shipment shipment;
@@ -42,6 +43,12 @@ class FraudScoringServiceTest {
         routeBaselineRepository = mock(RouteBaselineRepository.class);
         shipmentItemRepository = mock(ShipmentItemRepository.class);
         fraudFlagRepository = mock(com.logitrust.repository.FraudFlagRepository.class);
+        huggingFaceRiskService = mock(HuggingFaceRiskService.class);
+        // No incident notes are exercised in these tests - keep the 6th factor
+        // neutral so it never influences the assertions below.
+        when(huggingFaceRiskService.scoreIncidentNote(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyDouble()))
+                .thenAnswer(inv -> new com.logitrust.dto.ScoringFactorResult(
+                        "incidentTextRisk", 0, inv.getArgument(1), "No incident note supplied."));
 
         ScoringConfig config = new ScoringConfig();
         config.setId(ScoringConfig.SINGLETON_ID);
@@ -58,7 +65,7 @@ class FraudScoringServiceTest {
 
         service = new FraudScoringService(
                 scoringConfigRepository, routeBaselineRepository, shipmentItemRepository,
-                fraudFlagRepository, new ObjectMapper());
+                fraudFlagRepository, huggingFaceRiskService, new ObjectMapper());
 
         manufacturer = User.builder()
                 .id(UUID.randomUUID()).email("mfg@t.dev").passwordHash("x")
@@ -93,8 +100,7 @@ class FraudScoringServiceTest {
     void routeDeviation_noExpectedRouteDeclared_scoresZero() {
         shipment.setExpectedRouteJson(null);
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Anywhere", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Anywhere", null, null, null, null, Instant.now());
 
         assertThat(factor(result, "routeDeviation").score()).isZero();
     }
@@ -103,8 +109,7 @@ class FraudScoringServiceTest {
     void routeDeviation_checkpointOnDeclaredRoute_scoresZero() {
         shipment.setExpectedRouteJson(service.serializeExpectedRoute(List.of("Highway 1", "Store B")));
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, null, Instant.now());
 
         assertThat(factor(result, "routeDeviation").score()).isZero();
     }
@@ -113,8 +118,7 @@ class FraudScoringServiceTest {
     void routeDeviation_checkpointOffDeclaredRoute_scoresHigh() {
         shipment.setExpectedRouteJson(service.serializeExpectedRoute(List.of("Highway 1", "Store B")));
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Random Back Alley", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Random Back Alley", null, null, null, null, Instant.now());
 
         assertThat(factor(result, "routeDeviation").score()).isEqualTo(80);
     }
@@ -123,8 +127,7 @@ class FraudScoringServiceTest {
 
     @Test
     void timingAnomaly_noPriorEvent_scoresZero() {
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, null, Instant.now());
 
         assertThat(factor(result, "timingAnomaly").score()).isZero();
     }
@@ -137,8 +140,7 @@ class FraudScoringServiceTest {
                 .thenReturn(Optional.of(thin));
 
         Instant previous = Instant.now().minusSeconds(100000);
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, null, previous, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, previous, Instant.now());
 
         assertThat(factor(result, "timingAnomaly").score()).isZero();
     }
@@ -154,8 +156,7 @@ class FraudScoringServiceTest {
 
         Instant previous = Instant.EPOCH;
         Instant now = previous.plusSeconds(50000); // wildly longer than ~3600s baseline
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, null, previous, now);
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, previous, now);
 
         assertThat(factor(result, "timingAnomaly").score()).isGreaterThan(50);
     }
@@ -171,8 +172,7 @@ class FraudScoringServiceTest {
 
         Instant previous = Instant.EPOCH;
         Instant now = previous.plusSeconds(10); // arriving early is not fraud
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, null, previous, now);
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, previous, now);
 
         assertThat(factor(result, "timingAnomaly").score()).isZero();
     }
@@ -181,7 +181,7 @@ class FraudScoringServiceTest {
 
     @Test
     void conditionBreach_noReading_scoresZero() {
-        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, null, Instant.now());
 
         assertThat(factor(result, "conditionBreach").score()).isZero();
     }
@@ -190,8 +190,7 @@ class FraudScoringServiceTest {
     void conditionBreach_pharmaWithinRange_scoresZero() {
         ConditionData reading = new ConditionData(5.0, 50.0);
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", reading, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", reading, null, null, null, Instant.now());
 
         assertThat(factor(result, "conditionBreach").score()).isZero();
     }
@@ -200,8 +199,7 @@ class FraudScoringServiceTest {
     void conditionBreach_pharmaTooWarm_scoresHigh() {
         ConditionData reading = new ConditionData(25.0, 50.0); // way above the 2-8C cold chain range
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", reading, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", reading, null, null, null, Instant.now());
 
         assertThat(factor(result, "conditionBreach").score()).isEqualTo(100);
         assertThat(factor(result, "conditionBreach").explanation()).contains("PHARMA");
@@ -211,7 +209,7 @@ class FraudScoringServiceTest {
 
     @Test
     void identityReuse_noScannedSerials_scoresZero() {
-        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, null, Instant.now());
 
         assertThat(factor(result, "identityReuse").score()).isZero();
     }
@@ -220,8 +218,7 @@ class FraudScoringServiceTest {
     void identityReuse_unknownSerial_scoresHigh() {
         when(shipmentItemRepository.findBySerialNumber("GHOST-1")).thenReturn(Optional.empty());
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, List.of("GHOST-1"), null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, List.of("GHOST-1"), null, null, Instant.now());
 
         assertThat(factor(result, "identityReuse").score()).isEqualTo(100);
     }
@@ -242,8 +239,7 @@ class FraudScoringServiceTest {
                 .build();
         when(shipmentItemRepository.findBySerialNumber("SN-DUPE")).thenReturn(Optional.of(elsewhereItem));
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, List.of("SN-DUPE"), null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, List.of("SN-DUPE"), null, null, Instant.now());
 
         assertThat(factor(result, "identityReuse").score()).isEqualTo(100);
     }
@@ -253,8 +249,7 @@ class FraudScoringServiceTest {
         when(shipmentItemRepository.findBySerialNumber("SN-001"))
                 .thenReturn(Optional.of(shipment.getItems().get(0)));
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", null, List.of("SN-001"), null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, List.of("SN-001"), null, null, Instant.now());
 
         assertThat(factor(result, "identityReuse").score()).isZero();
     }
@@ -289,7 +284,7 @@ class FraudScoringServiceTest {
 
     @Test
     void combine_allFactorsClean_totalScoreIsZero() {
-        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", null, null, null, null, Instant.now());
 
         assertThat(result.totalScore()).isZero();
     }
@@ -298,8 +293,7 @@ class FraudScoringServiceTest {
     void combine_oneSevereFactor_pullsTotalScoreUp() {
         ConditionData badReading = new ConditionData(30.0, 50.0);
 
-        FraudScoreResult result = service.scoreCheckpoint(
-                shipment, "Highway 1", badReading, null, null, Instant.now());
+        FraudScoreResult result = service.scoreCheckpoint(shipment, "Highway 1", badReading, null, null, null, Instant.now());
 
         // conditionBreach=100 at weight 0.25 out of ~0.74 total active weight
         // (route+timing+condition+identity, since expectedRoute/baseline/serials

@@ -19,6 +19,7 @@ CREATE TABLE scoring_config (
     condition_breach_weight  DOUBLE PRECISION  NOT NULL,
     quantity_mismatch_weight DOUBLE PRECISION  NOT NULL,
     identity_reuse_weight    DOUBLE PRECISION  NOT NULL,
+    incident_text_risk_weight DOUBLE PRECISION NOT NULL,
     flag_threshold            INT               NOT NULL,
     freeze_threshold          INT               NOT NULL,
     updated_at                TIMESTAMPTZ       NOT NULL DEFAULT now()
@@ -28,9 +29,10 @@ CREATE TABLE scoring_config (
 -- score. Tunable later via this row without a redeploy (SRS 6.2).
 INSERT INTO scoring_config (
     id, route_deviation_weight, timing_anomaly_weight, condition_breach_weight,
-    quantity_mismatch_weight, identity_reuse_weight, flag_threshold, freeze_threshold
+    quantity_mismatch_weight, identity_reuse_weight, incident_text_risk_weight,
+    flag_threshold, freeze_threshold
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 0.20, 0.20, 0.30, 0.15, 0.15, 50, 80
+    '00000000-0000-0000-0000-000000000001', 0.18, 0.18, 0.25, 0.13, 0.13, 0.13, 50, 80
 );
 
 CREATE TABLE fraud_flags (
